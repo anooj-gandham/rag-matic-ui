@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography, Grid, Button, CircularProgress, TextField } from '@mui/material';
 import { get, post } from '../services/api';
 import FileCard from '../components/FileCard';
@@ -19,6 +19,16 @@ const UploadPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+  const fetchFiles = useCallback(async () => {
+    setLoading(true);
+    const response = await get('/api/files');
+    if (response) {
+      setFiles(response);
+      setLoading(false);
+      checkProcessingStatus(response);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFiles();
 
@@ -27,17 +37,7 @@ const UploadPage: React.FC = () => {
         clearInterval(pollingRef.current);
       }
     };
-  }, []);
-
-  const fetchFiles = async () => {
-    setLoading(true);
-    const response = await get('/api/files');
-    if (response) {
-      setFiles(response);
-      setLoading(false);
-      checkProcessingStatus(response);
-    }
-  };
+  }, [fetchFiles]);
 
   const checkProcessingStatus = (files: FileData[]) => {
     const allProcessed = files.every((file) => file.processed);
