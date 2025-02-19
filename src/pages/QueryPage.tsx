@@ -6,7 +6,6 @@ import { post, get } from "../services/api";
 const QueryPage: React.FC = () => {
   const { file_id } = useParams<{ file_id: string }>();
   const [query, setQuery] = useState("What is a Large Concept Model?");
-  const [taskId, setTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null); // Track polling interval
@@ -20,7 +19,6 @@ const QueryPage: React.FC = () => {
     const response = await post("/api/query-generate/", { file_id, query });
     console.log(response);
     if (response?.task_id) {
-      setTaskId(response.task_id);
       pollForResult(response.task_id); // Start polling
     }
   };
@@ -87,8 +85,6 @@ const QueryPage: React.FC = () => {
           />
         </Box>
       )}
-
-
     </Box>
   );
 };
