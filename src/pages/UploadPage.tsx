@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Box, Typography, Grid, Button, CircularProgress, TextField } from '@mui/material';
-import { get, post } from '../services/api';
-import FileCard from '../components/FileCard';
+import React, { useState, useEffect } from "react";
+import { Box, Typography, Grid, Button, CircularProgress } from "@mui/material";
+import FileCard from "../components/FileCard";
+import UploadModal from "../components/UploadModal";
+import { get } from "../services/api";
 
 interface FileData {
   id: string;
@@ -14,91 +15,53 @@ interface FileData {
 
 const UploadPage: React.FC = () => {
   const [files, setFiles] = useState<FileData[]>([]);
+  const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [fileInput, setFileInput] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [keepPolling, setKeepPolling] = useState(true); // Controls polling
 
-  const fetchFiles = useCallback(async () => {
-    setLoading(true);
-    const response = await get('/api/files');
-    if (response) {
-      setFiles(response);
-      setLoading(false);
-      checkProcessingStatus(response);
+  const loadFiles = async () => {
+    const fileList = await get("/api/files");
+    
+    if (fileList) {
+      setFiles(fileList);
+      
+      // Check if all files are processed
+      const allProcessed = fileList.every((file: FileData) => file.processed);
+
+      if (allProcessed) {
+        setKeepPolling(false); // Stop polling
+      }
     }
-  }, []);
+
+    setLoading(false);
+  };
 
   useEffect(() => {
-    fetchFiles();
+    let intervalId: NodeJS.Timeout;
 
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [fetchFiles]);
+    loadFiles();
 
-  const checkProcessingStatus = (files: FileData[]) => {
-    const allProcessed = files.every((file) => file.processed);
-    if (!allProcessed && !pollingRef.current) {
-      pollingRef.current = setInterval(async () => {
-        const updatedFiles = await get('/api/files');
-        if (updatedFiles) {
-          setFiles(updatedFiles);
-          const allProcessed = updatedFiles.every((file: FileData) => file.processed);
-          if (allProcessed && pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
-        }
-      }, 5000); // Poll every 5 seconds
+    if (keepPolling) {
+      intervalId = setInterval(loadFiles, 5000); // Poll every 5 seconds
     }
-  };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setFileInput(event.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!fileInput) return;
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', fileInput);
-
-    const response = await post('/api/upload-file', formData);
-    if (response && response.success) {
-      fetchFiles();
-      setFileInput(null);
-    }
-    setUploading(false);
-  };
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, [keepPolling]);
 
   return (
-    <Box sx={{ textAlign: 'left', p: 4 }}>
-      <Typography variant="h4">Upload Documents</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-        <TextField
-          type="file"
-          onChange={handleFileChange}
-          inputProps={{ accept: '.pdf,.docx,.txt,.json' }}
-          sx={{ mr: 2 }}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleUpload}
-          disabled={!fileInput || uploading}
-        >
-          {uploading ? <CircularProgress size={24} /> : 'Upload'}
+    <Box sx={{ textAlign: "left", p: 4 }}>
+      <Typography variant="h4">Files</Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", my: 2 }}>
+        <Typography variant="body1">Uploaded Files</Typography>
+        <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
+          + Upload
         </Button>
       </Box>
+
       {loading ? (
-        <CircularProgress sx={{ mt: 4 }} />
+        <CircularProgress />
       ) : (
-        <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid container spacing={2}>
           {files.length > 0 ? (
             files.map((file) => (
               <Grid item xs={12} sm={6} md={4} key={file.id}>
@@ -106,12 +69,15 @@ const UploadPage: React.FC = () => {
               </Grid>
             ))
           ) : (
-            <Typography variant="body1" sx={{ mt: 2 }}>
+            <Typography variant="body1" sx={{ mt: 2, width: "100%" }}>
               No files uploaded yet.
             </Typography>
           )}
         </Grid>
       )}
+
+      {/* Upload Modal */}
+      <UploadModal open={openModal} handleClose={() => setOpenModal(false)} refreshFiles={loadFiles} setKeepPolling={setKeepPolling} />
     </Box>
   );
 };

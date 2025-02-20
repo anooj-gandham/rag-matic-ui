@@ -9,6 +9,8 @@ const QueryPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null); // Track polling interval
+  const [fileName, setFileName] = useState<string | null>(null);
+
 
   // Handles query submission
   const handleQuerySubmit = async () => {
@@ -51,9 +53,23 @@ const QueryPage: React.FC = () => {
     return () => clearPolling();
   }, []);
 
+  useEffect(() => {
+    const fetchFileName = async () => {
+      if (!file_id) return;
+      
+      const fileData = await get(`/api/files/${file_id}/`);
+      
+      if (fileData?.name) {
+        setFileName(fileData.name);
+      }
+    };
+  
+    fetchFileName();
+  }, [file_id]);  
+
   return (
     <Box sx={{ textAlign: "center", p: 4 }}>
-      <Typography variant="h6">Selected File: {file_id}</Typography>
+      <Typography variant="h6">Selected File: {fileName}</Typography>
 
       <TextField
         fullWidth
