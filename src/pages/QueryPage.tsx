@@ -5,7 +5,7 @@ import { post, get } from "../services/api";
 
 const QueryPage: React.FC = () => {
   const { file_id } = useParams<{ file_id: string }>();
-  const [query, setQuery] = useState("What is a Large Concept Model?");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null); // Track polling interval
