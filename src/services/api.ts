@@ -1,4 +1,4 @@
-const BACKEND_BASE_URL = "http://localhost:8000";
+const BACKEND_BASE_URL = "http://54.235.61.83:8000";
 
 export const get = async (endpoint: string) => {
   try {
